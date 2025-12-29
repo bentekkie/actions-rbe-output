@@ -50,41 +50,42 @@ describe('main.ts', () => {
   })
 
   test.each`
-    onRBEval | name   | type
-    ${true}  | ${'a'} | ${'file'}
-    ${true}  | ${'b'} | ${'dir'}
-    ${false} | ${'c'} | ${'file'}
-    ${false} | ${'d'} | ${'dir'}
-  `(
-    'mark $type as an RBE output if $onRBEval is true',
-    async ({ onRBEval, name, type }) => {
-      onRBE.mockImplementation(() => {
-        console.log('got here', onRBEval)
-        return onRBEval
-      })
-      core.getInput.mockImplementation((inputName: string) => {
-        if (inputName === 'name') return name
-        if (inputName === 'path') {
-          if (type === 'file') {
-            return sampleFile
-          } else {
-            return sampleDir
-          }
+    name   | type
+    ${'a'} | ${'file'}
+    ${'b'} | ${'dir'}
+    ${'c'} | ${'file'}
+    ${'d'} | ${'dir'}
+  `('mark $type as an RBE output', async ({ name, type }) => {
+    onRBE.mockImplementation(() => true)
+    core.getInput.mockImplementation((inputName: string) => {
+      if (inputName === 'name') return name
+      if (inputName === 'path') {
+        if (type === 'file') {
+          return sampleFile
+        } else {
+          return sampleDir
         }
-        if (inputName === 'type') return type
-        return ''
-      })
-      await run(outputDir.path)
-      const base = path.basename(type === 'file' ? sampleFile : sampleDir)
-      if (onRBEval) {
-        expect(await exists(path.join(outputDir.path, name))).toBe(true)
-        expect(await exists(path.join(outputDir.path, name, base))).toBe(true)
-      } else {
-        expect(await exists(path.join(outputDir.path, name))).toBe(false)
-        expect(await exists(path.join(outputDir.path, name, base))).toBe(false)
       }
-    }
-  )
+      if (inputName === 'type') return type
+      return ''
+    })
+    await run(outputDir.path)
+    const base = path.basename(type === 'file' ? sampleFile : sampleDir)
+    expect(await exists(path.join(outputDir.path, name))).toBe(true)
+    expect(await exists(path.join(outputDir.path, name, base))).toBe(true)
+  })
+
+  test('do nothing if not on RBE', async () => {
+    onRBE.mockImplementation(() => false)
+    core.getInput.mockImplementation((inputName: string) => {
+      if (inputName === 'name') return 'abc'
+      if (inputName === 'path') return sampleFile
+      if (inputName === 'type') return 'file'
+      return ''
+    })
+    await run(outputDir.path)
+    expect(await exists(path.join(outputDir.path, 'abc'))).toBe(false)
+  })
 
   test('set failed', async () => {
     onRBE.mockImplementation(() => true)
