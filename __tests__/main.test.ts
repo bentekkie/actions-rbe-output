@@ -7,56 +7,97 @@
  */
 import { jest } from '@jest/globals'
 import * as core from '../__fixtures__/core.js'
-import { wait } from '../__fixtures__/wait.js'
+import path from 'path'
+import * as tmp from 'tmp-promise'
+import { onRBE } from '../__fixtures__/onrbe.js'
+import { writeFile, mkdir, rm } from 'fs/promises'
+import { exists } from 'fs-extra'
 
 // Mocks should be declared before the module being tested is imported.
 jest.unstable_mockModule('@actions/core', () => core)
-jest.unstable_mockModule('../src/wait.js', () => ({ wait }))
+jest.unstable_mockModule('../src/onrbe.js', () => ({ onRBE }))
 
 // The module being tested should be imported dynamically. This ensures that the
 // mocks are used in place of any actual dependencies.
 const { run } = await import('../src/main.js')
 
 describe('main.ts', () => {
-  beforeEach(() => {
-    // Set the action's inputs as return values from core.getInput().
-    core.getInput.mockImplementation(() => '500')
+  let buildDir: tmp.DirectoryResult
+  let outputDir: tmp.DirectoryResult
 
-    // Mock the wait function so that it does not actually wait.
-    wait.mockImplementation(() => Promise.resolve('done!'))
+  let sampleFile: string = ''
+  let sampleDir: string = ''
+
+  beforeEach(async () => {
+    core.info.mockImplementation((message: string) => {
+      console.log(message)
+    })
+
+    buildDir = await tmp.dir()
+    outputDir = await tmp.dir()
+
+    sampleFile = path.join(buildDir.path, 'some-file')
+    await writeFile(sampleFile, 'some-content')
+    sampleDir = path.join(buildDir.path, 'some-dir')
+    await mkdir(sampleDir)
+    await writeFile(path.join(sampleDir, 'some-file'), 'some-content')
   })
 
-  afterEach(() => {
+  afterEach(async () => {
+    await rm(buildDir.path, { recursive: true })
+    await rm(outputDir.path, { recursive: true })
     jest.resetAllMocks()
   })
 
-  it('Sets the time output', async () => {
-    await run()
+  test.each`
+    onRBEval | name   | type
+    ${true}  | ${'a'} | ${'file'}
+    ${true}  | ${'b'} | ${'dir'}
+    ${false} | ${'c'} | ${'file'}
+    ${false} | ${'d'} | ${'dir'}
+  `(
+    'mark $type as an RBE output if $onRBEval is true',
+    async ({ onRBEval, name, type }) => {
+      onRBE.mockImplementation(() => {
+        console.log('got here', onRBEval)
+        return onRBEval
+      })
+      core.getInput.mockImplementation((inputName: string) => {
+        if (inputName === 'name') return name
+        if (inputName === 'path') {
+          if (type === 'file') {
+            return sampleFile
+          } else {
+            return sampleDir
+          }
+        }
+        if (inputName === 'type') return type
+        return ''
+      })
+      await run(outputDir.path)
+      const base = path.basename(type === 'file' ? sampleFile : sampleDir)
+      if (onRBEval) {
+        expect(await exists(path.join(outputDir.path, name))).toBe(true)
+        expect(await exists(path.join(outputDir.path, name, base))).toBe(true)
+      } else {
+        expect(await exists(path.join(outputDir.path, name))).toBe(false)
+        expect(await exists(path.join(outputDir.path, name, base))).toBe(false)
+      }
+    }
+  )
 
-    // Verify the time output was set.
-    expect(core.setOutput).toHaveBeenNthCalledWith(
-      1,
-      'time',
-      // Simple regex to match a time string in the format HH:MM:SS.
-      expect.stringMatching(/^\d{2}:\d{2}:\d{2}/)
-    )
-  })
-
-  it('Sets a failed status', async () => {
-    // Clear the getInput mock and return an invalid value.
-    core.getInput.mockClear().mockReturnValueOnce('this is not a number')
-
-    // Clear the wait mock and return a rejected promise.
-    wait
-      .mockClear()
-      .mockRejectedValueOnce(new Error('milliseconds is not a number'))
-
-    await run()
-
-    // Verify that the action was marked as failed.
-    expect(core.setFailed).toHaveBeenNthCalledWith(
-      1,
-      'milliseconds is not a number'
+  test('set failed', async () => {
+    onRBE.mockImplementation(() => true)
+    core.getInput.mockImplementation((inputName: string) => {
+      if (inputName === 'name') return 'abc'
+      if (inputName === 'path')
+        return path.join(buildDir.path, 'does-not-exist')
+      if (inputName === 'type') return 'file'
+      return ''
+    })
+    await run(outputDir.path)
+    expect(core.setFailed).toHaveBeenCalledWith(
+      expect.stringContaining('no such file or directory')
     )
   })
 })

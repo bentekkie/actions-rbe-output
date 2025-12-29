@@ -1,23 +1,23 @@
-name: The name of your action here
-description: Provide a description here
-author: Your name or organization here
+name: RBE Output
+description: Mark an output to be downloaded by RBE
+author: bentekkie
 
 # Add your action's branding here. This will appear on the GitHub Marketplace.
 branding:
-  icon: heart
-  color: red
+  icon: file
+  color: blue
 
 # Define your inputs here.
 inputs:
-  milliseconds:
-    description: Your input description here
+  name:
+    description: The name of the output
     required: true
-    default: '1000'
-
-# Define your outputs here.
-outputs:
-  time:
-    description: Your output description here
+  path:
+    description: The path to the output
+    required: true
+  type:
+    description: The type of the output
+    required: true
 
 runs:
   using: node24

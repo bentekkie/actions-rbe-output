@@ -37,7 +37,10 @@
   },
   "license": "MIT",
   "dependencies": {
-    "@actions/core": "^1.11.1"
+    "@actions/core": "^1.11.1",
+    "@types/fs-extra": "^11.0.4",
+    "fs-extra": "^11.3.3",
+    "tmp-promise": "^3.0.3"
   },
   "devDependencies": {
     "@eslint/compat": "^1.4.0",
