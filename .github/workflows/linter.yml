@@ -37,7 +37,6 @@ jobs:
           node-version-file: .node-version
           package-manager-cache: false # Explicitly disable caching if you don't have a lockfile
 
-
       - name: Install Dependencies
         id: install
         run: npm install
