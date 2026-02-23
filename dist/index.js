@@ -30061,12 +30061,11 @@ async function run(outputDir) {
     try {
         const name = coreExports.getInput('name');
         const pathStr = coreExports.getInput('path');
-        const type = coreExports.getInput('type');
         if (!onRBE()) {
             coreExports.warning('This does nothing when not running on RBE');
             return;
         }
-        coreExports.debug(`Marking ${name} as an RBE output of type ${type} at ${pathStr}`);
+        coreExports.debug(`Marking ${name} as an RBE output at ${pathStr}`);
         const nameOutputDir = `${outputDir}/${name}`;
         await libExports.mkdirs(nameOutputDir, { mode: 0o777 }).catch((error) => {
             throw new Error(error);
