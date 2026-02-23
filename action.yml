@@ -12,11 +12,15 @@ inputs:
   name:
     description: The name of the output
     required: true
+  type:
+    description: The type of the output. One of fileset, container or buildgraph
+    required: true
+    default: fileset
   path:
     description: The path to the output
     required: true
-  type:
-    description: The type of the output
+  output_location:
+    description: The location of the output. Fully qualified GCS path if type is fileset or a buildgraph, otherwise it is an artifact registry docker path.
     required: true
 
 runs:
