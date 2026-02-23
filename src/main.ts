@@ -13,14 +13,12 @@ export async function run(outputDir: string): Promise<void> {
   try {
     const name: string = core.getInput('name')
     const pathStr: string = core.getInput('path')
-    const type: string = core.getInput('type')
-
     if (!onRBE()) {
       core.warning('This does nothing when not running on RBE')
       return
     }
 
-    core.debug(`Marking ${name} as an RBE output of type ${type} at ${pathStr}`)
+    core.debug(`Marking ${name} as an RBE output at ${pathStr}`)
 
     const nameOutputDir = `${outputDir}/${name}`
 
